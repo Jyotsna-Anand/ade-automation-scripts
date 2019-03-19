@@ -17,6 +17,8 @@ try
 
     .\Connect-Azure.ps1
 
+    Start-Sleep -Seconds 300    
+
     Write-Verbose "Runbook parameter: environment - $environment"
     $subscription = Get-AutomationVariable -Name "subscription"
     Write-Verbose "Automation variable: subscription - $subscription"
@@ -35,6 +37,17 @@ try
     Write-Verbose "Automation variable: smtpPort - $port"
     $recipients = Get-AutomationVariable -Name "mailRecipients"
     Write-Verbose "Automation variable: recipients - $recipients"
+
+    #get config file 
+    $blobContext = (Get-AzureRmStorageAccount -ResourceGroupName "adetestrg" -Name "adetestsa").Context
+    $blobContent = Get-AzureStorageBlob -Context $blobContext -Container "test-config" -Blob "automation_DailyResultsScript_config"
+    $configFile = $blobContent.ICloudBlob.DownloadText() | ConvertFrom-Json
+    
+    #get config params
+    $region = $configFile.region.$environment
+    $vmSize = $configFile.vmSize.$environment
+    $subjectEnvironment = $configFile.subject.$environment #environment name to display in email's subject 
+
 
     $today = Get-Date
     $endTimeStr = ("{0}/{1}/{2} {3}:00:00" -f $today.Month, $today.Day, $today.Year, $today.Hour)
@@ -159,7 +172,10 @@ try
     }       
     $jobsNotCompleted = $jobsCompleted - ($jobsPassed + $jobsFailed)
     $unknownEvictionsTotal = $jobsNotCompleted - $knownEvictionsTotal
-    $stats = ("<p>Total: {0}</br>Passed: {1}</br>Failed: {2}   (Quota failures: {4}, Capacity failures: {5}, Known failures: {6}, Other failures: {7})</br>Suspended: {3}   (Known: {8}, Other: {9})</p>" `
+
+    $testConfig = ("<p>Region: {0}</br>VM Size: {1}</br></p>" -f $region, $vmSize)
+
+    $stats = ("</br><p>Total: {0}</br>Passed: {1}</br>Failed: {2}   (Quota failures: {4}, Capacity failures: {5}, Known failures: {6}, Other failures: {7})</br>Suspended: {3}   (Known: {8}, Other: {9})</p>" `
                 -f $jobsCompleted, $jobsPassed, $jobsFailed, $jobsNotCompleted, $quotaFailuresTotal, $capacityFailuresTotal, $knownFailuresTotal, $otherFailuresTotal, $knownEvictionsTotal, $unknownEvictionsTotal)
         
     $failedJobResults += ("</br><b>Quota limitation failures: {3}</b></br> {0} </br><b>Capacity limitation failures: {4}</b></br> {1} </br> <b>Other failures: {5}</b></br> {2} </br>" -f $failures['QuotaFailures'], $failures['CapacityFailures'], $failures['OtherFailures'], `
@@ -176,8 +192,9 @@ try
                     $knownEvictionsTotal, $knownFailuresTotal, $failures['KnownTestSuspensions'], $failures['KnownFailures'])
      
     $resultsParagraph = ("<p>{0}</br>{1}</br>{2}</br>{3}</br></p>" -f $results, $unknownResults, $failedJobResults, $knownIssues)     
-    $body = ("<body>{0}{1}{2}</body>" -f $stats, $azAutoLink, $resultsParagraph)        
-    $subject = ("{4} ADE Automated Test Results {0}/{1}: Passed-{2} Failed-{3}" -f $today.Month, $today.Day, $jobsPassed, $jobsFailed, $environment)        
+    $body = ("<body>{0}{1}{2}{3}</body>" -f $testConfig, $stats, $azAutoLink, $resultsParagraph)        
+    $subject = ("{4} Results {0}/{1}: Passed-{2} Failed-{3}" -f $today.Month, $today.Day, $jobsPassed, $jobsFailed, $subjectEnvironment)
+    #$subject = ("{4} ADE Automated Test Results {0}/{1}: Passed-{2} Failed-{3}" -f $today.Month, $today.Day, $jobsPassed, $jobsFailed, $environment)        
     Send-MailMessage -To $recipientArr -From $acctName -SmtpServer $server -Port $port -Credential $creds -Subject $subject -BodyAsHtml -Body $body -UseSsl    
     Write-Verbose "Today's test result email sent successfully"
 }
