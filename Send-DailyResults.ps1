@@ -81,46 +81,55 @@ try
     {
         $fullJob = Get-AzureRmAutomationJob -Id $job.JobId -ResourceGroupName $resourceGroupName -AutomationAccountName $automationAcctName
         $envTag = $fullJob.JobParameters["environmenttag"]
-        if(($fullJob.RunbookName -like "Test-*") -and ($environment -eq $envTag))
+        if (![string]::IsNullOrEmpty($fullJob.JobParameters["runbookName"]))
         {
-            Write-Verbose ("Getting results for {0} ({1})" -f $fullJob.RunbookName, $fullJob.JobId)
+            $runbookName = $fullJob.JobParameters["runbookName"]
+        }
+        else
+        {
+            $runbookName = $fullJob.RunbookName
+        }
+
+        if(($runbookName -like "Test-*") -and ($environment -eq $envTag))
+        {
+            Write-Verbose ("Getting results for {0} ({1})" -f $runbookName, $fullJob.JobId)
             $jobsCompleted++
             if($fullJob.Status -in "Completed")
             {
-                Write-Verbose ("Adding Passed result for {0}" -f $fullJob.RunbookName)
-                $results += ("{0}: Passed           [Job Id: {1} ]</br>" -f $fullJob.RunbookName, $job.JobId)
+                Write-Verbose ("Adding Passed result for {0}" -f $runbookName)
+                $results += ("{0}: Passed           [Job Id: {1} ]</br>" -f $runbookName, $job.JobId)
                 $jobsPassed++
             }
             elseif($fullJob.Status -in "Failed")
             {
-                Write-Verbose ("Adding Failed result for {0}" -f $fullJob.RunbookName)
+                Write-Verbose ("Adding Failed result for {0}" -f $runbookName)
                 $exception = $fullJob.Exception
                 if($exception.Contains("Operation results in exceeding quota limits of Core"))
                 {
-                    Write-Verbose ("Adding quota Failed result for {0}" -f $fullJob.RunbookName)
+                    Write-Verbose ("Adding quota Failed result for {0}" -f $runbookName)
                     $failureType = 'QuotaFailures'      
                     $quotaFailuresTotal++              
                 }
                 elseif($exception.Contains("Allocation failed. We do not have sufficient capacity for the requested VM size in this region."))
                 {
-                    Write-Verbose ("Adding Capacity Failed result for {0}" -f $fullJob.RunbookName)
+                    Write-Verbose ("Adding Capacity Failed result for {0}" -f $runbookName)
                     $failureType = 'CapacityFailures'    
                     $capacityFailuresTotal ++          
                 }
-                elseif($knownFailuresList.Contains($fullJob.RunbookName)) 
+                elseif($knownFailuresList.Contains($runbookName)) 
                 {
-                    Write-Verbose ("Adding Known failure result for {0}" -f $fullJob.RunbookName)
+                    Write-Verbose ("Adding Known failure result for {0}" -f $runbookName)
                     $failureType = 'KnownFailures'
                     $knownFailuresTotal ++
                 }
                 else 
                 {
-                    Write-Verbose ("Adding other Failed result for {0}" -f $fullJob.RunbookName)
+                    Write-Verbose ("Adding other Failed result for {0}" -f $runbookName)
                     $failureType = 'OtherFailures'        
                     $otherFailuresTotal ++            
                 }
-                $failures[$failureType] += ("{0}: Failed</br>Exception: {1}</br>" -f $fullJob.RunbookName, $exception)
-                #$results += ("{0}: <b>Failed</b></br>Exception:</br>{1}</br>" -f $fullJob.RunbookName, $exception)
+                $failures[$failureType] += ("{0}: Failed</br>Exception: {1}</br>" -f $runbookName, $exception)
+                #$results += ("{0}: <b>Failed</b></br>Exception:</br>{1}</br>" -f $runbookName, $exception)
                 $verboseLogString = ""
                 #$records = Get-AzureRmAutomationJobOutput -Id $job.JobId -ResourceGroupName $job.ResourceGroupName -AutomationAccountName $job.AutomationAccountName -Stream Any | Get-AzureRmAutomationJobOutputRecord
                 #$records | ForEach-Object { if ($_.Value.Message -and !$_.Value.Message.StartsWith("Importing") -and !$_.Value.Message.StartsWith("Automation variable")) { $verboseLogString = $verboseLogString + $_.Value.Message + [Environment]::NewLine} } 
@@ -130,18 +139,18 @@ try
             }            
             else
             {
-                if($knownFailuresList.Contains($fullJob.RunbookName)) 
+                if($knownFailuresList.Contains($runbookName)) 
                 {
-                    Write-Verbose ("Adding Known test eviction result for {0}" -f $fullJob.RunbookName)                    
-                    $failures['KnownTestSuspensions'] += ("{0}: Unknown</br>" -f $fullJob.RunbookName) 
+                    Write-Verbose ("Adding Known test eviction result for {0}" -f $runbookName)                    
+                    $failures['KnownTestSuspensions'] += ("{0}: Unknown</br>" -f $runbookName) 
                     $failures['KnownTestSuspensions'] += ("Powershell:</br><code>`$records = Get-AzureRmAutomationJobOutput -Id {0} -ResourceGroupName {1} -AutomationAccountName {2} -Stream Any | Get-AzureRmAutomationJobOutputRecord</code></br></br>" -f $job.JobId, $job.ResourceGroupName, $job.AutomationAccountName)
                     $knownEvictionsTotal ++              
                     $noKnownEvictions = $false
                 }
                 else 
                 {
-                    Write-Verbose ("Adding Unknown result for {0}, investigate" -f $fullJob.RunbookName)                
-                    $unknownResults += ("{0}: Unknown</br>" -f $fullJob.RunbookName)  
+                    Write-Verbose ("Adding Unknown result for {0}, investigate" -f $runbookName)                
+                    $unknownResults += ("{0}: Unknown</br>" -f $runbookName)  
                     $unknownResults += ("Powershell:</br><code>`$records = Get-AzureRmAutomationJobOutput -Id {0} -ResourceGroupName {1} -AutomationAccountName {2} -Stream Any | Get-AzureRmAutomationJobOutputRecord</code></br></br>" -f $job.JobId, $job.ResourceGroupName, $job.AutomationAccountName)
                     $noUnknownResults = $false   
                 }           
