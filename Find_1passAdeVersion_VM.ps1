@@ -1,12 +1,12 @@
 ﻿<#
 READ ME:
-This script finds Windows and Linux Virtual Machine Scale Sets encrypted with single pass ADE in all resource groups present in a subscription. 
+This script finds Windows and Linux Virtual Machines encrypted with single pass ADE in all resource groups present in a subscription. 
 
 INPUT: 
 Enter the subscription ID of the subscription. DO NOT remove hyphens. Example: 759532d8-9991-4d04-878f-xxxxxxxxxxxx
 
 OUTPUT: 
-A .csv file with file name "<SubscriptionId>__AdeVMSSInfo.csv" is created in the same working directory.
+A .csv file with file name "<SubscriptionId>___AdeVMInfo.csv" is created in the same working directory.
 
 Note: If the ADE_Version field is empty in the output, it could mean that the VM is stopped (or) the VM is in a bad state.
 #>
