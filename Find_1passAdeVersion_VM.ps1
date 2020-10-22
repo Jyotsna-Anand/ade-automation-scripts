@@ -32,14 +32,12 @@ if($setSubscriptionContext -ne $null)
             $vm_OS = "Windows" 
         }
     
-        $vmInstanceView = Get-AzVM -ResourceGroupName $vmobject.ResourceGroupName -Name $vmobject.Name -Status
-    
+        $vmInstanceView = Get-AzVM -ResourceGroupName $vmobject.ResourceGroupName -Name $vmobject.Name -Status    
 
         $isVMADEEncrypted = $false
         $adeVersion = ""
 
-        #Find ADE extension version if disks are encrypted
-                   
+        #Find if VM has ADE extension installed                   
         $vmExtensions = $vmInstanceView.Extensions
         foreach ($extension in $vmExtensions)
         {
