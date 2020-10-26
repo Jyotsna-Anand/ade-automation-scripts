@@ -1,4 +1,4 @@
-﻿<# 
+<# 
 READ ME:
 This script finds Windows and Linux Virtual Machine Scale Sets encrypted with single pass ADE in all resource groups present in a subscription. 
 
@@ -8,7 +8,7 @@ Enter the subscription ID of the subscription. DO NOT remove hyphens. Example: 7
 OUTPUT: 
 A .csv file with file name "<SubscriptionId>__AdeVMSSInfo.csv" is created in the same working directory. 
 
-Note: If the ADE_Version field is empty in the output, it could mean that the VMSS is stopped (or) the VMSS is in a bad state.
+Note: If the ADE_Version field = "Not Available" in the output, it means that the VM is encrypted but the extension version couldn't be found. Please check the version manually for these VMSS.
 #>
 
 $ErrorActionPreference = "Continue"
@@ -74,6 +74,17 @@ if($setSubscriptionContext -ne $null)
                 }
                 $outputContent += New-Object PSObject -Property $results
                 Write-Host "Added details for encrypted VMSS" $vmssobject.Name
+            }
+            elseif ([string]::IsNullOrEmpty($adeVersion))
+            {
+                $results = @{
+                VMSSName = $vmssobject.Name
+                ResourceGroupName = $vmssobject.ResourceGroupName
+                VMSS_OS = $vmss_OS
+                ADE_Version = "Not Available"        
+                }
+                $outputContent += New-Object PSObject -Property $results
+                Write-Host "Added details for encrypted VMSS. ADE version = Not available" $vmssobject.Name
             }                         
         }                      
     }
