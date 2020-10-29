@@ -1,9 +1,9 @@
-﻿$rgname = Read-Host "Enter resource group name"
+$rgname = Read-Host "Enter resource group name"
 $vmssname = Read-Host "Enter VMSS name"
 $encEnabled = (Get-AzVmssDiskEncryption -ResourceGroupName $rgname -VMScaleSetName $vmssname).EncryptionEnabled
 $encSettings = (Get-AzVmssDiskEncryption -ResourceGroupName $rgname -VMScaleSetName $vmssname).EncryptionSettings
 
-if ($encEnabled -eq $true)
+if ($encSettings -ne $null)
 {
     $volType = $encSettings.VolumeType
     $dekUrl = $encSettings.KeyVaultURL
@@ -33,8 +33,6 @@ if ($encEnabled -eq $true)
             -DiskEncryptionKeyVaultUrl $dekUrl `
             -DiskEncryptionKeyVaultId $dekResId `
             -VolumeType $volType `
-            -KeyEncryptionAlgorithm $keyEncryptionAlgorithm `
             -ForceUpdate
     }
 }
-
